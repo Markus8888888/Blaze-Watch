@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wildfire Risk Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Initialize map
+    var map = L.map('map').setView([51.0, -114.0], 6); // Example: Alberta area
+
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    // Example dummy fire risk points [lat, lon, risk 0-1]
+    var riskPoints = [
+      [51.0, -114.0, 0.1],
+      [51.5, -114.5, 0.3],
+      [52.0, -115.0, 0.7],
+      [53.0, -116.0, 0.9]
+    ];
+
+    // Function to convert risk to RGB color
+    function riskToColor(risk) {
+      var r = Math.round(255 * risk);
+      var g = Math.round(255 * (1 - risk));
+      return 'rgb(' + r + ',' + g + ',0)';
+    }
+
+    // Add each point as a circle
+    riskPoints.forEach(function(point) {
+      var lat = point[0];
+      var lon = point[1];
+      var risk = point[2];
+      var color = riskToColor(risk);
+
+      L.circle([lat, lon], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.5,
+        radius: 10000  // meters
+      }).addTo(map).bindPopup('Risk: ' + Math.round(risk * 100) + '%');
+    });
+  </script>
+</body>
+</html>
