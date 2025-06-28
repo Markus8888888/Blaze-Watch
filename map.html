@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wildfire Risk Map</title>
+  <title>Wildfire Risk Map — Canada Only</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -17,30 +17,60 @@
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize map
-    var map = L.map('map').setView([51.0, -114.0], 6); // Example: Alberta area
+    // Canada bounding box
+    var canadaBounds = L.latLngBounds(
+      L.latLng(41, -141),  // Southwest corner
+      L.latLng(84, -52)    // Northeast corner
+    );
 
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18
+    // Initialize map centered on Canada
+    var map = L.map('map', {
+      center: [56.1304, -106.3468],
+      zoom: 4,
+      minZoom: 4,  // 🚫 Can’t zoom out more than this
+      maxZoom: 10, // Optional: set max zoom in
+      maxBounds: canadaBounds,
+      maxBoundsViscosity: 1.0 // Makes it stick hard
+    });
+
+    // Prevent drag out of bounds
+    map.on('drag', function() {
+      map.panInsideBounds(canadaBounds, { animate: false });
+    });
+
+    // ✅ Esri World Imagery
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Tiles © Esri'
     }).addTo(map);
 
-    // Example dummy fire risk points [lat, lon, risk 0-1]
+    // ✅ Canada provinces GeoJSON
+    fetch('https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/canada.geojson')
+      .then(response => response.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: {
+            color: 'black',
+            weight: 1.5,
+            fillOpacity: 0
+          }
+        }).addTo(map);
+      });
+
+    // Example fire risk points
     var riskPoints = [
-      [51.0, -114.0, 0.1],
-      [51.5, -114.5, 0.3],
-      [52.0, -115.0, 0.7],
-      [53.0, -116.0, 0.9]
+      [51.0, -114.0, 0.1],  // Alberta
+      [52.0, -106.0, 0.3],  // Saskatchewan
+      [53.5, -113.5, 0.7],  // Alberta
+      [50.0, -104.0, 0.9]   // Saskatchewan
     ];
 
-    // Function to convert risk to RGB color
     function riskToColor(risk) {
       var r = Math.round(255 * risk);
       var g = Math.round(255 * (1 - risk));
       return 'rgb(' + r + ',' + g + ',0)';
     }
 
-    // Add each point as a circle
     riskPoints.forEach(function(point) {
       var lat = point[0];
       var lon = point[1];
@@ -51,7 +81,7 @@
         color: color,
         fillColor: color,
         fillOpacity: 0.5,
-        radius: 10000  // meters
+        radius: 10000
       }).addTo(map).bindPopup('Risk: ' + Math.round(risk * 100) + '%');
     });
   </script>
