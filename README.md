@@ -1,28 +1,33 @@
-🔥 BlazeWatch – AI-Powered Wildfire Risk Prediction
+# 🔥 BlazeWatch – AI-Powered Wildfire Risk Prediction
+
 BlazeWatch is an AI-driven web tool that predicts wildfire risk and visualizes it on an interactive map, helping communities and responders stay ahead of potential fires.
 
-🚀 Features
-✅ Predicts wildfire risk based on weather, vegetation, and historical data
+## 🚀 Features
 
-✅ Visual heatmap overlay (green = low risk, red = high risk)
+- **AI-Powered Risk Prediction**: Predicts wildfire risk based on weather, vegetation, and historical data
+- **Interactive Heatmap**: Visual heatmap overlay (green = low risk, red = high risk)
+- **Detailed Information**: Clickable map points with risk details
+- **User-Friendly**: Fast, simple, and accessible interface
 
-✅ Clickable map points with risk details
+## 🧠 How It Works
 
-✅ Fast, simple, accessible
+### Backend
+- Trained ML model (e.g. Random Forest) predicts fire risk scores (0–1) for grid coordinates
+- RESTful API built with Flask
 
-🧠 How It Works
-Backend: Trained ML model (e.g. Random Forest) predicts fire risk scores (0–1) for grid coordinates.
+### Frontend
+- Interactive Leaflet.js map displays risk zones as color-coded markers
+- Responsive web interface
 
-Frontend: Interactive Leaflet.js map displays risk zones as color-coded markers.
+### Data Sources
+- Open weather & satellite data (e.g. NASA FIRMS, NOAA)
+- Real-time environmental monitoring
 
-Data: Uses open weather & satellite data (e.g. NASA FIRMS, NOAA).
+## ⚡ Tech Stack
 
-⚡ Tech Stack
-Python (Scikit-learn or XGBoost)
+- **Machine Learning**: Python (Scikit-learn or XGBoost)
+- **Backend**: Flask (API)
+- **Frontend**: HTML/CSS/JavaScript
+- **Mapping**: Leaflet.js
 
-Flask (API)
-
-Leaflet.js (Map)
-
-HTML/CSS/JS (Frontend)
 
