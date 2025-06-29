@@ -1,5 +1,5 @@
 from app import app
-from flask import request, jsonify
+from flask import request, jsonify, render_template
 import pickle
 import numpy as np
 
@@ -16,3 +16,11 @@ def predictSpread():
 
     prediction = spreadModel.predict(X)
     return jsonify({'predictions': prediction.tolist()})
+
+@app.route('/')
+def landing():
+    return render_template('landing.html')
+
+@app.route('/map')
+def map():
+    return render_template('map.html')
