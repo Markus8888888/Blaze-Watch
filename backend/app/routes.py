@@ -24,3 +24,7 @@ def landing():
 @app.route('/map')
 def map():
     return render_template('map.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
