@@ -95,6 +95,15 @@ async function initCircles() {
     maxClusterRadius: 40  // default 80. determines how close points need to be to cluster.
   });
 
+  markers.on('clusterclick', function (a) {
+    var cluster = a.layer; // the clicked cluster
+    var points = cluster.getAllChildMarkers();
+    console.log('Cluster contains', points.length, 'points');
+    points.forEach(p => {
+      console.log(p.getLatLng());
+    });
+  });
+
   riskPoints.forEach(function(point) {
     var lat = point[0];
     var lon = point[1];
