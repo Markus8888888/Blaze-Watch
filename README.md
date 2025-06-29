@@ -1,3 +1,33 @@
+BlazeWatch - "AI-Powered Wildfire Risk Predictor"
+
+BlazeWatch is an AI-driven web tool that predicts Canadian wildfire spreads over time, and visualizes it on an interactive map, helping local communities to stay alert of potential fires.
+
+Process
+
+Training the Machine Learning (ML) Model:
+- Our web app uses satilite and weather data to train a ML model to predict fire spreads. The model takes the maximum and minimum latitude and longitude points from each daily fire, which represent the bounding circle of the fire. This informs the model of the N/E/S/W edge points.
+- Given a day's fire boundary, the model's target outputs will be the next day's edge coordinates.
+- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 🔥 BlazeWatch – AI-Powered Wildfire Risk Prediction
 
 BlazeWatch is an AI-driven web tool that predicts wildfire risk and visualizes it on an interactive map, helping communities and responders stay ahead of potential fires.
