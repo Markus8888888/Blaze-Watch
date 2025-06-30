@@ -1,6 +1,31 @@
 var sidePanel = document.getElementById('sidePanel');
 var riskInfo = document.getElementById('riskInfo');
 var closeBtn = document.getElementById('closeBtn');
+var slider = document.getElementById('daySlider');
+
+noUiSlider.create(slider, {
+  start: 1,
+  step: 1,
+  range: {
+    min: 1,
+    max: 5
+  },
+  tooltips: true,
+  format: {
+    to: value => Math.round(value),
+    from: value => Number(value)
+  },
+  pips: {
+    mode: 'steps',
+    stepped: true,
+    density: 20
+  }
+});
+
+slider.noUiSlider.on('update', function (values, handle) {
+  console.log('Day selected:', values[handle]);
+  // You can update your map here based on day selection
+});
 
 const today = new Date();
 const yyyy = today.getFullYear();
@@ -92,6 +117,7 @@ async function initCircles() {
 
   closeBtn.onclick = function() {
     sidePanel.classList.remove('open');
+    slider.style.display = 'none';
   };
 
   // Create a marker cluster group to improve performance with many points
@@ -104,6 +130,9 @@ async function initCircles() {
   markers.on('clusterclick', function (a) {
     var cluster = a.layer; // the clicked cluster
     var points = cluster.getAllChildMarkers();
+    
+    sidePanel.classList.add('open');
+    slider.style.display = 'block';  
 
     console.log('Cluster contains', points.length, 'points');
 
@@ -142,30 +171,8 @@ async function initCircles() {
       .then(response => response.json())
       .then(data => {
         console.log('Prediction from backend:', data.predictions);
-        
-        const rawPoints = data.predictions[0]; // assuming it's an array inside an array
-        const coords = [];
-
-        for (let i = 0; i < rawPoints.length; i += 2) {
-          coords.push([rawPoints[i], rawPoints[i + 1]]);
-        }
-
-        coords.forEach(([lat, lon]) => {
-          const yellowCircle = L.circleMarker([lat, lon], {
-            color: 'yellow',
-            fillColor: 'yellow',
-            fillOpacity: 0.9,
-            radius: 6,
-            pane: 'riskPane',
-            interactive: false
-          });
-          yellowCircle.addTo(map);
-        });
-      })
-      .catch(error => {
-        console.error('Error sending prediction request:', error);
-    });
-
+        drawPredictionCircles(data.predictions);
+      });
   });
 
   riskPoints.forEach(function(point) {
@@ -198,6 +205,30 @@ async function initCircles() {
   map.addLayer(markers);
 }
 
+function drawPredictionCircles(predictions) {
+  const allDays = predictions[0]; // shape: [ [day1], [day2], ..., [day5] ]
+
+  allDays.forEach((dayPoints, dayIndex) => {
+    for (let i = 0; i < dayPoints.length; i += 2) {
+      const lat = dayPoints[i];
+      const lon = dayPoints[i + 1];
+
+      const circle = L.circleMarker([lat, lon], {
+        color: 'yellow',
+        fillColor: 'yellow',
+        fillOpacity: 0.8,
+        radius: 5 + dayIndex, // slightly larger each day
+        pane: 'riskPane',
+        interactive: false
+      }).bindTooltip(`Day ${dayIndex + 1}`, {
+        permanent: false,
+        direction: 'top'
+      });
+
+      circle.addTo(map);
+    }
+  });
+}
 
 function riskToColor(risk) {
   var r = Math.round(255 * risk);
