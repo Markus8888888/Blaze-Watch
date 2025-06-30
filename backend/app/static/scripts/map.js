@@ -301,22 +301,34 @@ function drawPredictionCircles(predictions) {
       dayCircles.push(circle);
     }
 
-    // Draw a yellow polyline connecting the day's points
-    if (latlngs.length > 1) {
-      const polyline = L.polyline(latlngs, {
-        color: 'yellow',
-        weight: 2 + dayIndex, // slightly thicker for future days
-        opacity: 0.7,
-        pane: 'riskPane'
-      });
+    // Draw a yellow polygon (shaded area) connecting the day's points
+    if (latlngs.length >= 3) {
+      // Convert to GeoJSON points
+      const points = turf.featureCollection(
+        latlngs.map(([lat, lon]) => turf.point([lon, lat]))
+      );
 
-      if (dayIndex === 0) {
-        polyline.addTo(map);
+      const hull = turf.convex(points);
+
+      if (hull) {
+        // Extract and convert to Leaflet [lat, lon]
+        const hullCoords = hull.geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
+
+        const polygon = L.polygon(hullCoords, {
+          color: 'yellow',
+          fillColor: 'yellow',
+          fillOpacity: 0.3,
+          weight: 1 + dayIndex,
+          pane: 'riskPane'
+        });
+
+        if (dayIndex === 0) {
+          polygon.addTo(map);  // Only show Day 1 initially
+        }
+
+        dayCircles.push(polygon); // store the polygon
       }
-
-      dayCircles.push(polyline); // store polyline alongside circles
     }
-
     predictionCirclesByDay.push(dayCircles);
   });
 }
