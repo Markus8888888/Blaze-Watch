@@ -3,37 +3,47 @@ var sidePanel = document.getElementById('sidePanel');
 var riskInfo = document.getElementById('riskInfo');
 var closeBtn = document.getElementById('closeBtn');
 var slider = document.getElementById('daySlider');
+var sliderDiv = document.getElementsByClassName("mt-3")
+var load = document.getElementById('load')
+var mapLoader = document.getElementById('map-loader');
 
+// date for retrieving fire data from NASA FIRM API
 const today = new Date();
+today.setDate(today.getDate() - 1);
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, '0');  
 const dd = String(today.getDate()).padStart(2, '0');
 const currentDate = `${yyyy}-${mm}-${dd}`;
 
+let clusterMarkers = [];
+let pointMarkers = [];
+let staticClusters = [];
+let superclusterInstance;
+let activeRequestId = 0;
+
+const fixedZoomLevel = 4;  
 var predictionCirclesByDay = [];
 var map;
 var isSidePanelOpen = false; 
 
-// Setup UI
-function setupSlider() {
-  noUiSlider.create(slider, {
-    start: 1,
-    step: 1,
-    range: { min: 1, max: 5 },
-    tooltips: false,
-    format: {
-      to: value => Math.round(value),
-      from: value => Number(value)
-    },
-    pips: {
-      mode: 'steps',
-      stepped: true,
-      density: 20
-    }
-  });
-
-  slider.noUiSlider.on('update', onSliderUpdate);
-}
+noUiSlider.create(slider, {
+  start: 1,
+  step: 1,
+  range: {
+    min: 1,
+    max: 3
+  },
+  tooltips: false, 
+  format: {
+    to: value => Math.round(value),
+    from: value => Number(value)
+  },
+  pips: {
+    mode: 'steps',
+    stepped: true,
+    density: 20
+  }
+});
 
 function setSidePanelOpen(state) {
   isSidePanelOpen = state;
@@ -70,7 +80,7 @@ function drawMap() {
     center: [56.1304, -106.3468],
     zoom: 4,
     minZoom: 4,
-    maxZoom: 14,
+    maxZoom: 6,
     maxBounds: canadaBounds,
     maxBoundsViscosity: 1.0
   });
@@ -133,107 +143,198 @@ async function getRiskPoints() {
   }
 }
 
+
+
 // Clusters and prediction circles
 async function initCircles() {
   const riskPoints = await getRiskPoints();
+  const geojsonPoints = riskPoints.map(([lat, lon, risk], i) => ({
+    type: 'Feature',
+    properties: { id: i, risk },
+    geometry: {
+      type: 'Point',
+      coordinates: [lon, lat]
+    }
+  }));
 
-  closeBtn.onclick = function() {
+  superclusterInstance = new Supercluster({
+    radius: 60,
+    maxZoom: 14
+  });
+
+  superclusterInstance.load(geojsonPoints);
+
+  const bounds = map.getBounds();
+  const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  staticClusters = superclusterInstance.getClusters(bbox, fixedZoomLevel);
+
+  drawStaticClusters();
+  console.log("loaded");
+  mapLoader.style.display = 'none';
+
+  // Close side panel 
+  closeBtn.onclick = function () {
     sidePanel.classList.remove('open');
+    slider.noUiSlider.set(1);
     setSidePanelOpen(false);
     slider.style.display = 'none';
-    // Remove all yellow prediction circles from the map when side panel is closed
-    predictionCirclesByDay.flat().forEach(item => map.hasLayer(item) && map.removeLayer(item));
+    clearPoints();
+    drawStaticClusters();
+    map.setView([56.1304, -106.3468], fixedZoomLevel);
   };
+}
 
-  // Create a marker cluster group to improve performance with many points
-  var markers = L.markerClusterGroup({
-    showCoverageOnHover: false,
-    maxClusterRadius: 30,  // default 80. determines how close points need to be to cluster.
-    disableClusteringAtZoom: 8  // default 14. clusters will not be created at this zoom level and below.
+function drawStaticClusters() {
+  clearClusters();
+
+  staticClusters.forEach(cluster => {
+    const [lon, lat] = cluster.geometry.coordinates;
+    const pointCount = cluster.properties.cluster ? cluster.properties.point_count : 1;
+    let fillColor;
+
+    if (pointCount < 10) {
+      fillColor = 'yellow';
+    } else if (pointCount < 100) {
+      fillColor = 'orange';
+    } else {
+      fillColor = 'red';
+    }
+
+    const marker = L.circleMarker([lat, lon], {
+      color: fillColor,
+      fillColor: fillColor,
+      fillOpacity: 0.6,
+      radius: 8 + Math.log(pointCount),
+      pane: 'riskPane'
+    }).bindTooltip(
+      `${cluster.properties.cluster ? cluster.properties.point_count : 1} fires`
+    );
+
+    marker.on('click', () => {
+      if (cluster.properties.cluster) {
+        activeRequestId ++;
+        const requestId = activeRequestId;
+        const points = superclusterInstance.getLeaves(cluster.id, Infinity);
+        clearClusters();
+        drawPoints(points);
+
+        const [clusterLng, clusterLat] = cluster.geometry.coordinates;
+        map.setView([clusterLat, clusterLng+3], 8, { animate: true });
+
+        sidePanel.classList.add('open');
+        setSidePanelOpen(true);
+        for (let e of sliderDiv) {
+          e.style.display = 'none';
+        } 
+        load.style.display = 'block'
+
+        console.log('Cluster contains', points.length, 'points');
+
+        var minLatPoint = null;
+        var maxLatPoint = null;
+        var minLngPoint = null;
+        var maxLngPoint = null;
+        
+        // find largest + smallest lattitude + longitude and send to backend
+        points.forEach(p => {
+          const [lng, lat] = p.geometry.coordinates;
+
+          if (!minLatPoint || lat < minLatPoint.lat) minLatPoint = { lat, lng };
+          if (!maxLatPoint || lat > maxLatPoint.lat) maxLatPoint = { lat, lng };
+          if (!minLngPoint || lng < minLngPoint.lng) minLngPoint = { lat, lng };
+          if (!maxLngPoint || lng > maxLngPoint.lng) maxLngPoint = { lat, lng };
+        });
+
+        var payload = {
+          lat_max_lat: maxLatPoint.lat,
+          lat_max_lng: maxLatPoint.lng,
+          lat_min_lat: minLatPoint.lat,
+          lat_min_lng: minLatPoint.lng,
+          lon_max_lat: maxLngPoint.lat,
+          lon_max_lng: maxLngPoint.lng,
+          lon_min_lat: minLngPoint.lat,
+          lon_min_lng: minLngPoint.lng
+        };
+        console.log(payload)
+
+        fetch('/predict-spread', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Prediction from backend:', data.predictions);
+            if (isSidePanelOpen && requestId == activeRequestId) {
+              drawPredictionCircles(data.predictions);
+              for (let e of sliderDiv) {
+                e.style.display = 'block';
+              }
+              load.style.display = 'none';
+            } else {
+              console.log('Side panel closed before predictions arrived; skipping drawing circles.');
+            }
+          });
+      }
+    });
+
+    marker.addTo(map);
+    clusterMarkers.push(marker);
   });
-  
-  markers.on('clusterclick', onClusterClick);
+}
 
-  riskPoints.forEach(([lat, lon, risk]) => {
-    const circle = L.circleMarker([lat, lon], {
+function drawPoints(points) {
+  points.forEach(p => {
+    const [lon, lat] = p.geometry.coordinates;
+    const risk = p.properties.risk;
+    console.log(p.properties)
+
+    const marker = L.circleMarker([lat, lon], {
       color: riskToColor(risk),
       fillColor: riskToColor(risk),
       fillOpacity: 0.8,
       radius: 5,
-      pane: 'riskPane',
-      interactive: true
+      pane: 'riskPane'
     });
 
-    circle.on('click', function() {
-      riskInfo.innerHTML = `
-        <strong>Risk Level:</strong> ${Math.round(risk * 100)}%<br>
-        <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}
-      `;
+    marker.on('click', () => {
+      riskInfo.innerHTML =
+        `<strong>Risk Level:</strong> ${Math.round(risk * 100)}%<br>
+         <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
       sidePanel.classList.add('open');
       setSidePanelOpen(true);
-      map.flyTo([lat, lon], map.getZoom(), { animate: true, duration: 1.5 });
+      map.flyTo([lat, lon+3], map.getZoom(), { animate: true, duration: 1.5 });
     });
 
-    markers.addLayer(circle);
+    marker.addTo(map);
+    pointMarkers.push(marker);
   });
-
-  map.addLayer(markers);
 }
 
-function onClusterClick(e) {
-   var cluster = e.layer; // the clicked cluster
-    var points = cluster.getAllChildMarkers();
+function clearClusters() {
+  clusterMarkers.forEach(marker => map.removeLayer(marker));
+  clusterMarkers = [];
+}
 
-  sidePanel.classList.add('open');
-  setSidePanelOpen(true);
-  slider.style.display = 'block';
+function clearPoints() {
+  pointMarkers.forEach(marker => map.removeLayer(marker));
+  pointMarkers = [];
+}
 
-  console.log('Cluster contains', points.length, 'points');
-
-  var minLatPoint = null;
-  var maxLatPoint = null;
-  var minLngPoint = null;
-  var maxLngPoint = null;
-
-  points.forEach(p => {
-    const { lat, lng } = p.getLatLng();
-    if (!minLatPoint || lat < minLatPoint.lat) minLatPoint = { lat, lng };
-    if (!maxLatPoint || lat > maxLatPoint.lat) maxLatPoint = { lat, lng };
-    if (!minLngPoint || lng < minLngPoint.lng) minLngPoint = { lat, lng };
-    if (!maxLngPoint || lng > maxLngPoint.lng) maxLngPoint = { lat, lng };
-  });
-
-  var payload = {
-    lat_max_lat: maxLatPoint.lat,
-    lat_max_lng: maxLatPoint.lng,
-    lat_min_lat: minLatPoint.lat,
-    lat_min_lng: minLatPoint.lng,
-    lon_max_lat: maxLngPoint.lat,
-    lon_max_lng: maxLngPoint.lng,
-    lon_min_lat: minLngPoint.lat,
-    lon_min_lng: minLngPoint.lng
-  };
-
-  fetch('/predict-spread', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then(res => res.json())
-    .then(data => {
-      console.log('Prediction from backend:', data.predictions);
-      if (isSidePanelOpen) {
-        drawPredictionCircles(data.predictions);
+function drawPredictionCircles(predictions) {
+  // Clear previous circles
+  predictionCirclesByDay.forEach(dayCircles => {
+    dayCircles.forEach(item => {
+      if (map.hasLayer(item)) {
+        map.removeLayer(item);
       }
     });
-}
-
-// Prediction drawing
-function drawPredictionCircles(predictions) {
-  predictionCirclesByDay.flat().forEach(item => map.hasLayer(item) && map.removeLayer(item));
-
+  });
   predictionCirclesByDay = [];
-  const allDays = predictions[0]; // [ [day1 coords], [day2 coords], ..., [day5 coords] ]
+
+  const allDays = predictions[0]; 
 
   allDays.forEach((dayPoints, dayIndex) => {
     const dayCircles = [];
@@ -248,34 +349,43 @@ function drawPredictionCircles(predictions) {
         color: 'yellow',
         fillColor: 'yellow',
         fillOpacity: 0.8,
-        radius: 5 + dayIndex, // slightly larger each day
+        radius: 5 + dayIndex,
         pane: 'riskPane',
         interactive: false
       }).bindTooltip(`Day ${dayIndex + 1}`, { permanent: false, direction: 'top' });
 
       if (dayIndex === 0) {
-        circle.addTo(map);  // Only show Day 1 initially
+        circle.addTo(map);
       }
 
       dayCircles.push(circle);
     }
 
-    // Draw a yellow polyline connecting the day's points
-    if (latlngs.length > 1) {
-      const polyline = L.polyline(latlngs, {
-        color: 'yellow',
-        weight: 2 + dayIndex, // slightly thicker for future days
-        opacity: 0.7,
-        pane: 'riskPane'
-      });
+    if (latlngs.length >= 3) {
+      const points = turf.featureCollection(
+        latlngs.map(([lat, lon]) => turf.point([lon, lat]))
+      );
 
-      if (dayIndex === 0) {
-        polyline.addTo(map);
+      const hull = turf.convex(points);
+
+      if (hull) {
+        const hullCoords = hull.geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
+
+        const polygon = L.polygon(hullCoords, {
+          color: 'yellow',
+          fillColor: 'yellow',
+          fillOpacity: 0.3,
+          weight: 1 + dayIndex,
+          pane: 'riskPane'
+        });
+
+        if (dayIndex === 0) {
+          polygon.addTo(map);  // Only show Day 1 initially
+        }
+
+        dayCircles.push(polygon);
       }
-
-      dayCircles.push(polyline); // store polyline alongside circles
     }
-
     predictionCirclesByDay.push(dayCircles);
   });
 }

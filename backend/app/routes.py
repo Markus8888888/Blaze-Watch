@@ -91,7 +91,17 @@ def runPredictions(latMaxLat, latMaxLon,
 
     X = np.array([predictors])
 
-    prediction = spreadModel.predict(X).tolist()[0]
+    prediction = spreadModel.predict(X).tolist()[0] 
+
+    prediction[0] = latMaxLat + prediction[0]
+    prediction[1] = latMaxLon + prediction[1]
+    prediction[2] = latMinLat + prediction[2]
+    prediction[3] = latMinLon + prediction[3]
+    prediction[4] = lonMaxLat + prediction[4]
+    prediction[5] = lonMaxLon + prediction[5]
+    prediction[6] = lonMinLat + prediction[6]
+    prediction[7] = lonMinLon + prediction[7]
+
     predictionList.append(prediction)
 
     if count == 0:
@@ -120,9 +130,8 @@ def predictSpread():
                                  latMinLat, latMinLon,
                                  lonMaxLat, lonMaxLon,
                                  lonMinLat, lonMinLon,
-                                 5)
+                                 3)
     print(predictions)
-   
     return jsonify({'predictions': predictions})
 
 @app.route('/')
