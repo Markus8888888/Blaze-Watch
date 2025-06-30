@@ -131,7 +131,7 @@ def predictSpread():
                                  lonMaxLat, lonMaxLon,
                                  lonMinLat, lonMinLon,
                                  3)
-    print(predictions)
+    # print(predictions)
     return jsonify({'predictions': predictions})
 
 @app.route('/')

@@ -2,7 +2,7 @@
 
 **BlazeWatch** is an AI-driven web tool that predicts wildfire spread across Canada and visualizes risk zones on an interactive map. It helps local communities to stay alert and take early action.
 
-![BlazeWatch demo](README_gif.gif)
+![BlazeWatch demo](wildfire.gif)
 
 ---
 
