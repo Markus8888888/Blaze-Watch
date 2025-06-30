@@ -92,7 +92,7 @@ async function initCircles() {
   var markers = L.markerClusterGroup({
     showCoverageOnHover: false,
     maxClusterRadius: 60,  // default 80. determines how close points need to be to cluster.
-    disableClusteringAtZoom: 9  // default 14. clusters will not be created at this zoom level and below.
+    disableClusteringAtZoom: 8  // default 14. clusters will not be created at this zoom level and below.
   });
 
   markers.on('clusterclick', function (a) {
@@ -136,6 +136,25 @@ async function initCircles() {
       .then(response => response.json())
       .then(data => {
         console.log('Prediction from backend:', data.predictions);
+        
+        const rawPoints = data.predictions[0]; // assuming it's an array inside an array
+        const coords = [];
+
+        for (let i = 0; i < rawPoints.length; i += 2) {
+          coords.push([rawPoints[i], rawPoints[i + 1]]);
+        }
+
+        coords.forEach(([lat, lon]) => {
+          const yellowCircle = L.circleMarker([lat, lon], {
+            color: 'yellow',
+            fillColor: 'yellow',
+            fillOpacity: 0.9,
+            radius: 6,
+            pane: 'riskPane',
+            interactive: false
+          });
+          yellowCircle.addTo(map);
+        });
       })
       .catch(error => {
         console.error('Error sending prediction request:', error);
