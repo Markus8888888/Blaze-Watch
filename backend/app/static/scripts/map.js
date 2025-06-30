@@ -25,7 +25,6 @@ const fixedZoomLevel = 4;
 var predictionCirclesByDay = [];
 var map;
 var isSidePanelOpen = false; 
-setSidePanelOpen(false);
 
 noUiSlider.create(slider, {
   start: 1,
@@ -48,47 +47,30 @@ noUiSlider.create(slider, {
 
 function setSidePanelOpen(state) {
   isSidePanelOpen = state;
-
   if (!state) {
-    // Remove all yellow prediction circles when panel closes
-    predictionCirclesByDay.forEach(dayCircles => {
-      dayCircles.forEach(circle => {
-        if (map.hasLayer(circle)) {
-          map.removeLayer(circle);
-        }
-      });
-    });
+    predictionCirclesByDay.forEach(dayCircles =>
+      dayCircles.forEach(circle => map.hasLayer(circle) && map.removeLayer(circle))
+    );
   }
 }
 
-slider.noUiSlider.on('update', function (values, handle) {
-  const selectedDay = Number(values[handle]) - 1; // zero-based index
+function onSliderUpdate(values, handle) {
+  const selectedDay = Number(values[handle]) - 1;
   console.log('Day selected:', selectedDay + 1);
+  if (!isSidePanelOpen) return;
+  // Hide all circles
+  predictionCirclesByDay.forEach(dayCircles =>
+    dayCircles.forEach(circle => map.hasLayer(circle) && map.removeLayer(circle))
+  );
+  // Show selected day's circles
+  predictionCirclesByDay[selectedDay]?.forEach(circle => circle.addTo(map));
+}
 
-  if (!isSidePanelOpen) {
-    return;
-  }
-
-  // Hide all circles first
-  predictionCirclesByDay.forEach((dayCircles, index) => {
-    dayCircles.forEach(circle => {
-      if (map.hasLayer(circle)) {
-        map.removeLayer(circle);
-      }
-    });
-  });
-
-  // Show only circles for the selected day
-  if (predictionCirclesByDay[selectedDay]) {
-    predictionCirclesByDay[selectedDay].forEach(circle => {
-      circle.addTo(map);
-    });
-  }
-});
-
+// Map initialization 
 function initMap() {
   map = drawMap(); 
   initCircles();
+  setupSlider();
 }
 
 function drawMap() {
@@ -133,12 +115,10 @@ function drawMap() {
   return mapInstance;
 }
 
+// Data fetching and processing
 async function getRiskPoints() {
   try {
-    const response = await fetch(
-      `https://firms.modaps.eosdis.nasa.gov/api/country/csv/d1775654091d25f131d6db111a4a466a/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`
-    );
-
+    const response = await fetch(`https://firms.modaps.eosdis.nasa.gov/api/country/csv/d1775654091d25f131d6db111a4a466a/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`);
     const csvText = await response.text();
     const lines = csvText.trim().split('\n');
     const headers = lines[0].split(',');
@@ -155,8 +135,8 @@ async function getRiskPoints() {
       const risk = 1.0;
       riskPoints.push([lat, lon, risk]);
     }
-    console.log(riskPoints);
     return riskPoints;
+
   } catch (error) {
     console.error('Error fetching or parsing data:', error);
     return [];
@@ -164,6 +144,8 @@ async function getRiskPoints() {
 }
 
 
+
+// Clusters and prediction circles
 async function initCircles() {
   const riskPoints = await getRiskPoints();
   const geojsonPoints = riskPoints.map(([lat, lon, risk], i) => ({
@@ -370,10 +352,7 @@ function drawPredictionCircles(predictions) {
         radius: 5 + dayIndex,
         pane: 'riskPane',
         interactive: false
-      }).bindTooltip(`Day ${dayIndex + 1}`, {
-        permanent: false,
-        direction: 'top'
-      });
+      }).bindTooltip(`Day ${dayIndex + 1}`, { permanent: false, direction: 'top' });
 
       if (dayIndex === 0) {
         circle.addTo(map);
@@ -411,10 +390,12 @@ function drawPredictionCircles(predictions) {
   });
 }
 
+// Helper functions
 function riskToColor(risk) {
   var r = Math.round(255 * risk);
   var g = Math.round(255 * (1 - risk));
   return 'rgb(' + r + ',' + g + ',0)';
 }
 
+// Start app
 initMap(); 
