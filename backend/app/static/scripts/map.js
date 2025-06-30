@@ -3,6 +3,8 @@ var sidePanel = document.getElementById('sidePanel');
 var riskInfo = document.getElementById('riskInfo');
 var closeBtn = document.getElementById('closeBtn');
 var slider = document.getElementById('daySlider');
+var sliderDiv = document.getElementsByClassName("mt-3")
+var load = document.getElementById('load')
 
 // date for retrieving fire data from NASA FIRM API
 const today = new Date();
@@ -16,6 +18,7 @@ let clusterMarkers = [];
 let pointMarkers = [];
 let staticClusters = [];
 let superclusterInstance;
+let activeRequestId = 0;
 
 const fixedZoomLevel = 4;  
 var predictionCirclesByDay = [];
@@ -224,6 +227,8 @@ function drawStaticClusters() {
 
     marker.on('click', () => {
       if (cluster.properties.cluster) {
+        activeRequestId ++;
+        const requestId = activeRequestId;
         const points = superclusterInstance.getLeaves(cluster.id, Infinity);
         clearClusters();
         drawPoints(points);
@@ -233,7 +238,10 @@ function drawStaticClusters() {
 
         sidePanel.classList.add('open');
         setSidePanelOpen(true);
-        slider.style.display = 'block';  
+        for (let e of sliderDiv) {
+          e.style.display = 'none';
+        } 
+        load.style.display = 'block'
 
         console.log('Cluster contains', points.length, 'points');
 
@@ -274,8 +282,12 @@ function drawStaticClusters() {
           .then(response => response.json())
           .then(data => {
             console.log('Prediction from backend:', data.predictions);
-            if (isSidePanelOpen) {
+            if (isSidePanelOpen && requestId == activeRequestId) {
               drawPredictionCircles(data.predictions);
+              for (let e of sliderDiv) {
+                e.style.display = 'block';
+              }
+              load.style.display = 'none';
             } else {
               console.log('Side panel closed before predictions arrived; skipping drawing circles.');
             }
