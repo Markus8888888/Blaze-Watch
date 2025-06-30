@@ -10,10 +10,10 @@ body {
 
 #sidePanel {
   position: fixed;
-  top: 70px;
+  top: 64px;
   right: -320px; /* start hidden offscreen */
   width: 320px;
-  height: calc(100% - 70px);
+  height: calc(100% - 64px);
   background: white;
   box-shadow: -3px 0 10px rgba(0,0,0,0.3);
   padding: 20px;
@@ -76,11 +76,13 @@ body {
 
 .navbar-brand {
   font-size: 1.75rem;
+  padding-right: 0;
+  margin-right: 0;
 }
 
 #map-loader {
   position: fixed;
-  top: 80px;
+  top: 64px;
   left: 0;
   width: 100vw;
   height: 100vh;
@@ -92,4 +94,9 @@ body {
   align-items: center;
   font-size: 1.3em;
   color: white;
+}
+
+.custom-py-2-5 {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
 }
