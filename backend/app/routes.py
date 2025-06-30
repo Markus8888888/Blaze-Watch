@@ -71,7 +71,6 @@ def predictSpread():
         "LON_MAX": (lonMaxLat, lonMaxLon),
         "LON_MIN": (lonMinLat, lonMinLon)
     }
-    print(points)
 
     predictors = []
 
@@ -96,7 +95,6 @@ def predictSpread():
         predictors.append(getVegetation(lat, lon))
 
     X = np.array([predictors])
-    print(X)
 
     prediction = spreadModel.predict(X)
 
