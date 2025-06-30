@@ -98,10 +98,49 @@ async function initCircles() {
   markers.on('clusterclick', function (a) {
     var cluster = a.layer; // the clicked cluster
     var points = cluster.getAllChildMarkers();
+
     console.log('Cluster contains', points.length, 'points');
+
+    var minLatPoint = null;
+    var maxLatPoint = null;
+    var minLngPoint = null;
+    var maxLngPoint = null;
+
     points.forEach(p => {
-      console.log(p.getLatLng());
+      const { lat, lng } = p.getLatLng();
+
+      if (!minLatPoint || lat < minLatPoint.lat) minLatPoint = { lat, lng };
+      if (!maxLatPoint || lat > maxLatPoint.lat) maxLatPoint = { lat, lng };
+      if (!minLngPoint || lng < minLngPoint.lng) minLngPoint = { lat, lng };
+      if (!maxLngPoint || lng > maxLngPoint.lng) maxLngPoint = { lat, lng };
     });
+
+    var payload = {
+      lat_max_lat: maxLatPoint.lat,
+      lat_max_lng: maxLatPoint.lng,
+      lat_min_lat: minLatPoint.lat,
+      lat_min_lng: minLatPoint.lng,
+      lon_max_lat: maxLngPoint.lat,
+      lon_max_lng: maxLngPoint.lng,
+      lon_min_lat: minLngPoint.lat,
+      lon_min_lng: minLngPoint.lng
+    };
+
+    fetch('/predict-spread', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Prediction from backend:', data.predictions);
+      })
+      .catch(error => {
+        console.error('Error sending prediction request:', error);
+    });
+
   });
 
   riskPoints.forEach(function(point) {
