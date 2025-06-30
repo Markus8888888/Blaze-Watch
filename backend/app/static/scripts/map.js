@@ -26,24 +26,29 @@ var predictionCirclesByDay = [];
 var map;
 var isSidePanelOpen = false; 
 
-noUiSlider.create(slider, {
-  start: 1,
-  step: 1,
-  range: {
-    min: 1,
-    max: 3
-  },
-  tooltips: false, 
-  format: {
-    to: value => Math.round(value),
-    from: value => Number(value)
-  },
-  pips: {
-    mode: 'steps',
-    stepped: true,
-    density: 20
-  }
-});
+function setupSlider() {
+  noUiSlider.create(slider, {
+    start: 1,
+    step: 1,
+    range: {
+      min: 1,
+      max: 3
+    },
+    tooltips: false, 
+    format: {
+      to: value => Math.round(value),
+      from: value => Number(value)
+    },
+    pips: {
+      mode: 'steps',
+      stepped: true,
+      density: 20
+    }
+  });
+
+  slider.noUiSlider.on('update', onSliderUpdate);
+}
+
 
 function setSidePanelOpen(state) {
   isSidePanelOpen = state;
