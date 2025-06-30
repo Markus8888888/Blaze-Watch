@@ -70,7 +70,7 @@ async function getRiskPoints() {
       const row = lines[i].split(',');
       const lat = parseFloat(row[latIndex]);
       const lon = parseFloat(row[lonIndex]);
-      const risk = 0.5;
+      const risk = 1.0;
       riskPoints.push([lat, lon, risk]);
     }
     console.log(riskPoints);
@@ -83,7 +83,6 @@ async function getRiskPoints() {
 
 async function initCircles() {
   const riskPoints = await getRiskPoints();
-  // console.log(riskPoints.length)
 
   closeBtn.onclick = function() {
     sidePanel.classList.remove('open');
@@ -92,7 +91,8 @@ async function initCircles() {
   // Create a marker cluster group to improve performance with many points
   var markers = L.markerClusterGroup({
     showCoverageOnHover: false,
-    maxClusterRadius: 40  // default 80. determines how close points need to be to cluster.
+    maxClusterRadius: 60,  // default 80. determines how close points need to be to cluster.
+    disableClusteringAtZoom: 9  // default 14. clusters will not be created at this zoom level and below.
   });
 
   markers.on('clusterclick', function (a) {
@@ -125,7 +125,6 @@ async function initCircles() {
         <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}
       `;
       sidePanel.classList.add('open');
-      // map.flyTo([lat, lon], 8, { animate: true, duration: 1.5 });  // this one zooms out as well
       map.flyTo([lat, lon], map.getZoom(), { animate: true, duration: 1.5 });
     });
 
