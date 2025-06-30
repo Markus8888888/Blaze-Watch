@@ -23,8 +23,28 @@ noUiSlider.create(slider, {
 });
 
 slider.noUiSlider.on('update', function (values, handle) {
-  console.log('Day selected:', values[handle]);
-  // You can update your map here based on day selection
+  const selectedDay = Number(values[handle]) - 1; // zero-based index
+  console.log('Day selected:', selectedDay + 1);
+
+  if (!isSidePanelOpen) {
+    return;
+  }
+
+  // Hide all circles first
+  predictionCirclesByDay.forEach((dayCircles, index) => {
+    dayCircles.forEach(circle => {
+      if (map.hasLayer(circle)) {
+        map.removeLayer(circle);
+      }
+    });
+  });
+
+  // Show only circles for the selected day
+  if (predictionCirclesByDay[selectedDay]) {
+    predictionCirclesByDay[selectedDay].forEach(circle => {
+      circle.addTo(map);
+    });
+  }
 });
 
 const today = new Date();
@@ -34,6 +54,8 @@ const dd = String(today.getDate()).padStart(2, '0');
 const currentDate = `${yyyy}-${mm}-${dd}`;
 
 var map;
+var isSidePanelOpen = false; 
+var predictionCirclesByDay = [];
 
 function initMap() {
   map = drawMap(); 
@@ -117,7 +139,17 @@ async function initCircles() {
 
   closeBtn.onclick = function() {
     sidePanel.classList.remove('open');
+    isSidePanelOpen = false;
     slider.style.display = 'none';
+
+    // Remove all yellow prediction circles from the map
+    predictionCirclesByDay.forEach(dayCircles => {
+      dayCircles.forEach(circle => {
+        if (map.hasLayer(circle)) {
+          map.removeLayer(circle);
+        }
+      });
+    });
   };
 
   // Create a marker cluster group to improve performance with many points
@@ -132,6 +164,7 @@ async function initCircles() {
     var points = cluster.getAllChildMarkers();
     
     sidePanel.classList.add('open');
+    isSidePanelOpen = true;
     slider.style.display = 'block';  
 
     console.log('Cluster contains', points.length, 'points');
@@ -196,6 +229,7 @@ async function initCircles() {
         <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}
       `;
       sidePanel.classList.add('open');
+      isSidePanelOpen = true;
       map.flyTo([lat, lon], map.getZoom(), { animate: true, duration: 1.5 });
     });
 
@@ -206,9 +240,16 @@ async function initCircles() {
 }
 
 function drawPredictionCircles(predictions) {
-  const allDays = predictions[0]; // shape: [ [day1], [day2], ..., [day5] ]
+  // Clear previous circles if any
+  predictionCirclesByDay.forEach(dayCircles => {
+    dayCircles.forEach(circle => map.removeLayer(circle));
+  });
+  predictionCirclesByDay = [];
+
+  const allDays = predictions[0]; // [ [day1 coords], [day2 coords], ..., [day5 coords] ]
 
   allDays.forEach((dayPoints, dayIndex) => {
+    const dayCircles = [];
     for (let i = 0; i < dayPoints.length; i += 2) {
       const lat = dayPoints[i];
       const lon = dayPoints[i + 1];
@@ -225,10 +266,16 @@ function drawPredictionCircles(predictions) {
         direction: 'top'
       });
 
-      circle.addTo(map);
+      if (dayIndex === 0) {
+        circle.addTo(map);  // Only add day 1 circles initially
+      }
+
+      dayCircles.push(circle);
     }
+    predictionCirclesByDay.push(dayCircles);
   });
 }
+
 
 function riskToColor(risk) {
   var r = Math.round(255 * risk);
