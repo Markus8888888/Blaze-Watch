@@ -133,6 +133,26 @@ function drawMap() {
   return mapInstance;
 }
 
+function cleanData(csvText) {
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0].split(',');
+
+  const latIndex = headers.indexOf('latitude');
+  const lonIndex = headers.indexOf('longitude');
+
+  const riskPoints = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(',');
+    const lat = parseFloat(row[latIndex]);
+    const lon = parseFloat(row[lonIndex]);
+    const risk = 1.0;
+    riskPoints.push([lat, lon, risk]);
+  }
+  console.log(riskPoints);
+  return riskPoints;
+}
+
 async function getRiskPoints() {
   try {
     const response = await fetch(
@@ -140,26 +160,18 @@ async function getRiskPoints() {
     );
 
     const csvText = await response.text();
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',');
-
-    const latIndex = headers.indexOf('latitude');
-    const lonIndex = headers.indexOf('longitude');
-
-    const riskPoints = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const row = lines[i].split(',');
-      const lat = parseFloat(row[latIndex]);
-      const lon = parseFloat(row[lonIndex]);
-      const risk = 1.0;
-      riskPoints.push([lat, lon, risk]);
-    }
-    console.log(riskPoints);
-    return riskPoints;
+    return cleanData(csvText)
   } catch (error) {
     console.error('Error fetching or parsing data:', error);
-    return [];
+    // LOADS BACKUP DATA in the case that sattallite api goes down
+    try {
+      const fallbackResponse = await fetch('/static/backup_data/firms_canada_2025-06-30.csv');
+      const fallbackCSV = await fallbackResponse.text();
+      return cleanData(fallbackCSV);
+    } catch (fallbackError) {
+      console.error('Failed to load fallback CSV:', fallbackError);
+      return [];
+    }
   }
 }
 
