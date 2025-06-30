@@ -2,6 +2,12 @@ var sidePanel = document.getElementById('sidePanel');
 var riskInfo = document.getElementById('riskInfo');
 var closeBtn = document.getElementById('closeBtn');
 
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, '0');  
+const dd = String(today.getDate()).padStart(2, '0');
+const currentDate = `${yyyy}-${mm}-${dd}`;
+
 var map;
 
 function initMap() {
@@ -54,7 +60,7 @@ function drawMap() {
 async function getRiskPoints() {
   try {
     const response = await fetch(
-      'https://firms.modaps.eosdis.nasa.gov/api/country/csv/d1775654091d25f131d6db111a4a466a/LANDSAT_NRT/CAN/1/2025-06-28'
+      `https://firms.modaps.eosdis.nasa.gov/api/country/csv/d1775654091d25f131d6db111a4a466a/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`
     );
 
     const csvText = await response.text();
