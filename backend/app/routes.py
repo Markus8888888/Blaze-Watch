@@ -57,13 +57,13 @@ def getVegetation(lat, lon):
 def predictSpread():
     coords = request.json
     lonMaxLat = coords.get("lon_max_lat")
-    lonMaxLon = coords.get("lon_max_lon")
+    lonMaxLon = coords.get("lon_max_lng")
     lonMinLat = coords.get("lon_min_lat")
-    lonMinLon = coords.get("lon_min_lon")
+    lonMinLon = coords.get("lon_min_lng")
     latMaxLat = coords.get("lat_max_lat")
-    latMaxLon = coords.get("lat_max_lon")
+    latMaxLon = coords.get("lat_max_lng")
     latMinLat = coords.get("lat_min_lat")
-    latMinLon = coords.get("lat_min_lon")
+    latMinLon = coords.get("lat_min_lng")
 
     points = {
         "LAT_MAX": (latMaxLat, latMaxLon),
@@ -71,6 +71,7 @@ def predictSpread():
         "LON_MAX": (lonMaxLat, lonMaxLon),
         "LON_MIN": (lonMinLat, lonMinLon)
     }
+    print(points)
 
     predictors = []
 
