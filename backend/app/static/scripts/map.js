@@ -5,6 +5,7 @@ var closeBtn = document.getElementById('closeBtn');
 var slider = document.getElementById('daySlider');
 
 const today = new Date();
+today.setDate(today.getDate() - 1);
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, '0');  
 const dd = String(today.getDate()).padStart(2, '0');
@@ -20,7 +21,7 @@ noUiSlider.create(slider, {
   step: 1,
   range: {
     min: 1,
-    max: 5
+    max: 3
   },
   tooltips: false, // removes the little number that appears above the slider
   format: {
