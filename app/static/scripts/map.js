@@ -61,7 +61,7 @@ function setSidePanelOpen(state) {
 
 function onSliderUpdate(values, handle) {
   const selectedDay = Number(values[handle]) - 1;
-  console.log('Day selected:', selectedDay + 1);
+  // console.log('Day selected:', selectedDay + 1);
   if (!isSidePanelOpen) return;
   // Hide all circles
   predictionCirclesByDay.forEach(dayCircles =>
@@ -136,7 +136,7 @@ function cleanData(csvText) {
     const risk = 1.0;
     riskPoints.push([lat, lon, risk]);
   }
-  console.log(riskPoints);
+  // console.log(riskPoints);
   return riskPoints;
 }
 
@@ -188,7 +188,7 @@ async function initCircles() {
   staticClusters = superclusterInstance.getClusters(bbox, fixedZoomLevel);
 
   drawStaticClusters();
-  console.log("loaded");
+  // console.log("loaded");
   mapLoader.style.display = 'none';
 
   // Close side panel 
@@ -247,7 +247,7 @@ function drawStaticClusters() {
         } 
         load.style.display = 'block'
 
-        console.log('Cluster contains', points.length, 'points');
+        // console.log('Cluster contains', points.length, 'points');
 
         var minLatPoint = null;
         var maxLatPoint = null;
@@ -274,7 +274,7 @@ function drawStaticClusters() {
           lon_min_lat: minLngPoint.lat,
           lon_min_lng: minLngPoint.lng
         };
-        console.log(payload)
+        // console.log(payload)
 
         fetch('/predict-spread', {
           method: 'POST',
@@ -285,7 +285,7 @@ function drawStaticClusters() {
         })
           .then(response => response.json())
           .then(data => {
-            console.log('Prediction from backend:', data.predictions);
+            // console.log('Prediction from backend:', data.predictions);
             if (isSidePanelOpen && requestId == activeRequestId) {
               drawPredictionCircles(data.predictions);
               for (let e of sliderDiv) {
@@ -293,7 +293,7 @@ function drawStaticClusters() {
               }
               load.style.display = 'none';
             } else {
-              console.log('Side panel closed before predictions arrived; skipping drawing circles.');
+              // console.log('Side panel closed before predictions arrived; skipping drawing circles.');
             }
           });
       }
@@ -308,7 +308,7 @@ function drawPoints(points) {
   points.forEach(p => {
     const [lon, lat] = p.geometry.coordinates;
     const risk = p.properties.risk;
-    console.log(p.properties)
+    // console.log(p.properties)
 
     const marker = L.circleMarker([lat, lon], {
       color: riskToColor(risk),
