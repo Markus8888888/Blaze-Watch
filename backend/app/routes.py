@@ -52,26 +52,20 @@ def getVegetation(lat, lon):
 
     return veg_array[convertedLat, convertedLon]
 
-# routes
-@app.route('/predict-spread', methods=['POST'])
-def predictSpread():
-    coords = request.json
-    lonMaxLat = coords.get("lon_max_lat")
-    lonMaxLon = coords.get("lon_max_lng")
-    lonMinLat = coords.get("lon_min_lat")
-    lonMinLon = coords.get("lon_min_lng")
-    latMaxLat = coords.get("lat_max_lat")
-    latMaxLon = coords.get("lat_max_lng")
-    latMinLat = coords.get("lat_min_lat")
-    latMinLon = coords.get("lat_min_lng")
-
+def runPredictions(latMaxLat, latMaxLon,
+                   latMinLat, latMinLon,
+                   lonMaxLat, lonMaxLon,
+                   lonMinLat, lonMinLon,
+                   count, predictionList = None):
+    if predictionList is None:
+        predictionList = []
+    count -= 1
     points = {
         "LAT_MAX": (latMaxLat, latMaxLon),
         "LAT_MIN": (latMinLat, latMinLon),
         "LON_MAX": (lonMaxLat, lonMaxLon),
         "LON_MIN": (lonMinLat, lonMinLon)
     }
-    print(points)
 
     predictors = []
 
@@ -96,11 +90,40 @@ def predictSpread():
         predictors.append(getVegetation(lat, lon))
 
     X = np.array([predictors])
-    print(X)
 
-    prediction = spreadModel.predict(X)
+    prediction = spreadModel.predict(X).tolist()[0]
+    predictionList.append(prediction)
 
-    return jsonify({'predictions': prediction.tolist()})
+    if count == 0:
+        return [predictionList]
+    else:
+        return runPredictions(prediction[0], prediction[1],
+                              prediction[2], prediction[3],
+                              prediction[4], prediction[5],
+                              prediction[6], prediction[7],
+                              count, predictionList)
+
+# routes
+@app.route('/predict-spread', methods=['POST'])
+def predictSpread():
+    coords = request.json
+    lonMaxLat = coords.get("lon_max_lat")
+    lonMaxLon = coords.get("lon_max_lng")
+    lonMinLat = coords.get("lon_min_lat")
+    lonMinLon = coords.get("lon_min_lng")
+    latMaxLat = coords.get("lat_max_lat")
+    latMaxLon = coords.get("lat_max_lng")
+    latMinLat = coords.get("lat_min_lat")
+    latMinLon = coords.get("lat_min_lng")
+
+    predictions = runPredictions(latMaxLat, latMaxLon,
+                                 latMinLat, latMinLon,
+                                 lonMaxLat, lonMaxLon,
+                                 lonMinLat, lonMinLon,
+                                 5)
+    print(predictions)
+   
+    return jsonify({'predictions': predictions})
 
 @app.route('/')
 def landing():
