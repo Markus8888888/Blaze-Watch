@@ -1,11 +1,10 @@
-# 🔥 BlazeWatch - "AI-Powered Wildfire Risk Predictor"
+# Blaze Watch - AI Wildfire Predictor
 
-**BlazeWatch** is an AI-driven web tool that predicts wildfire spread across Canada and visualizes risk zones on an interactive map. It helps local communities to stay alert and take early action.
+An AI-driven web tool that predicts wildfire spread across Canada and visualizes risk zones on an interactive map. It helps local communities to stay alert and take early action.
 
 <p style="text-align: center;">
   <img src="app/static/img/wildfire.gif" alt="BlazeWatch demo" width="500">
 </p>
----
 
 ## Features
 - **AI-Powered Risk Prediction**
@@ -17,9 +16,9 @@ Clickable map points with risk details
 - **User-Friendly**
 Fast, simple, and accessible interface
 
----
 
-### Installation
+
+## Installation
 1. Clone the repo:
     ```sh
    git clone https://github.com/AustinBao/blaze-watch
@@ -33,46 +32,53 @@ Fast, simple, and accessible interface
    flask run
    ```
 
----
 
-## Process Overview
+
+## How We Trained Our AI
 
 ### Training the Machine Learning Model
-- Uses **satellite and weather data** to train a fire spread predictor
-- Fire boundaries are represented by **max/min lat/lon points** (N/E/S/W edges)
-- For each fire on a given day, the model predicts the **next-day edge coordinates**
-- Uses **XGBoost Regressor** within a multi-output regression setup
-- Predicts **8 coordinate values** representing 4 directional edge points
+- Trained on satellite, weather, and vegetation data to predict fire spread
+- Fire boundaries defined by max/min latitude and longitude points (N/E/S/W edges)
+- Model predicts next-day boundary coordinates for each fire area
+- Uses an XGBoost multi-output regression model
+- Outputs 8 coordinate values representing updated fire edges
 
 ### Model Evaluation
-- Uses **Root Mean Square Error (RMSE)** in degrees of latitude/longitude
-- **Cross-validation** used to reduce overfitting and improve accuracy
+- Evaluated with Root Mean Square Error (RMSE) in lat/lon degrees
+- Applies cross-validation to ensure accuracy and prevent overfitting
 
----
+
+
+
 ## Architecture
 
 ### Backend (Flask)
-- Hosts an API to return model predictions
-- Serves "map.html" (main interface), "landing.html", and "about.html"
+- Serves pages: `/` (landing), `/map`, `/about`
+- API `/predict-spread`:
+  - Takes fire cluster bounds
+  - Fetches weather & vegetation data
+  - Runs ML model to predict 3-day fire spread
+  - Returns prediction JSON
 
-### Frontend
-- Satellite basemap through **Esri World Imagery**
-- Interactive fire risk points clustered with **Leaflet.markercluster**
-- Dynamic side panel shows:
-    - Risk percentage (colour-coded)
-    - Geographic coordinates
-- Clickable clusters reveal all contained markers
-- Smooth animated transitions
+### Frontend (JS + Leaflet)
+- Map centered on Canada with **Esri World Imagery**
+- Fetches daily fire points from NASA FIRMS (fallback to local CSV)
+- Clusters fires using **Supercluster** at zoom 4
+- Cluster colors: yellow (small), orange (medium), red (large)
+- Clicking cluster:
+  - Expands points
+  - Sends bounds to backend for predictions
+  - Shows 3-day spread polygons & circles
+- Side panel shows risk %, coordinates, and day slider
+- Smooth map controls with loading indicators
 
----
 
 ## Data Sources
-- **NASA FIRMS** (hotspot detection via LANDSAT, MODIS, VIIRS)
-- **Open-Meteo API** (Weather features like wind speed, temperature, humidity)
-- **NASA GISS** (Vegetation data)
-- Custom preprocessing of historical wildfire perimeter data
+- [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/download/) (hotspot detection via LANDSAT, MODIS, VIIRS)
+- [Open-Meteo API](https://open-meteo.com/en/docs) (Weather features like wind speed, temperature, humidity)
+- [NASA GISS](https://data.giss.nasa.gov/landuse/vegeem.html) (Vegetation data)
+- [Natural Resources Canada](https://cwfis.cfs.nrcan.gc.ca/datamart/metadata/fm3buffered) (historical wildfire perimeter data)
 
----
 
 ## Tech Stack
 
@@ -80,15 +86,15 @@ Fast, simple, and accessible interface
 - `pandas`, `geopandas`, `numpy`, `matplotlib`  
 - `scikit-learn`, `xgboost`, `pickle`  
 - `openmeteo-requests`, `retry-requests`, `requests-cache`  
-- `contextily` (for basemaps when training visualization)
+- `contextily` 
 
 ### Backend
-- `Flask` (Python REST API)
+- `Flask` 
 
 ### Frontend
 - `HTML`, `CSS`, `JavaScript`
 - `Bootstrap`
-- `Leaflet.js` (map)
-- `Leaflet.markercluster`
-
----
+- `Leaflet.js`
+- `Supercluster`
+- `Turf.js`
+- `noUiSlider`
