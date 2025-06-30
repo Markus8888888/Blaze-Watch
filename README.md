@@ -67,7 +67,8 @@ Fast, simple, and accessible interface
 
 ## Data Sources
 - **NASA FIRMS** (hotspot detection via LANDSAT, MODIS, VIIRS)
-- **Open-Meteo API** (weather features like wind speed, temperature, humidity)
+- **Open-Meteo API** (Weather features like wind speed, temperature, humidity)
+- **NASA GISS** (Vegetation data)
 - Custom preprocessing of historical wildfire perimeter data
 
 ---
