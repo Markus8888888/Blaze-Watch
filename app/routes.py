@@ -52,13 +52,18 @@ def getVegetation(lat, lon):
 
     return veg_array[convertedLat, convertedLon]
 
-def runPredictions(latMaxLat, latMaxLon,
-                   latMinLat, latMinLon,
-                   lonMaxLat, lonMaxLon,
-                   lonMinLat, lonMinLon,
-                   count, predictionList = None):
+def runPredictions(
+        latMaxLat, latMaxLon,
+        latMinLat, latMinLon,
+        lonMaxLat, lonMaxLon,
+        lonMinLat, lonMinLon,
+        count, 
+        predictionList = None
+    ):
+    
     if predictionList is None:
         predictionList = []
+
     count -= 1
     points = {
         "LAT_MAX": (latMaxLat, latMaxLon),
@@ -107,11 +112,14 @@ def runPredictions(latMaxLat, latMaxLon,
     if count == 0:
         return [predictionList]
     else:
-        return runPredictions(prediction[0], prediction[1],
-                              prediction[2], prediction[3],
-                              prediction[4], prediction[5],
-                              prediction[6], prediction[7],
-                              count, predictionList)
+        return runPredictions(
+            prediction[0], prediction[1],
+            prediction[2], prediction[3],
+            prediction[4], prediction[5],
+            prediction[6], prediction[7],
+            count, 
+            predictionList
+        )
 
 # routes
 @app.route('/predict-spread', methods=['POST'])
@@ -126,12 +134,14 @@ def predictSpread():
     latMinLat = coords.get("lat_min_lat")
     latMinLon = coords.get("lat_min_lng")
 
-    predictions = runPredictions(latMaxLat, latMaxLon,
-                                 latMinLat, latMinLon,
-                                 lonMaxLat, lonMaxLon,
-                                 lonMinLat, lonMinLon,
-                                 3)
-    # print(predictions)
+    predictions = runPredictions(
+        latMaxLat, latMaxLon,
+        latMinLat, latMinLon,
+        lonMaxLat, lonMaxLon,
+        lonMinLat, lonMinLon,
+        3
+    )
+
     return jsonify({'predictions': predictions})
 
 @app.route('/')
