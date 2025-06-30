@@ -5,6 +5,7 @@ var closeBtn = document.getElementById('closeBtn');
 var slider = document.getElementById('daySlider');
 var sliderDiv = document.getElementsByClassName("mt-3")
 var load = document.getElementById('load')
+var mapLoader = document.getElementById('map-loader');
 
 // date for retrieving fire data from NASA FIRM API
 const today = new Date();
@@ -186,6 +187,8 @@ async function initCircles() {
   staticClusters = superclusterInstance.getClusters(bbox, fixedZoomLevel);
 
   drawStaticClusters();
+  console.log("loaded");
+  mapLoader.style.display = 'none';
 
   // Close side panel 
   closeBtn.onclick = function () {
