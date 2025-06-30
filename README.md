@@ -18,6 +18,22 @@ Fast, simple, and accessible interface
 
 ---
 
+### Installation
+1. Clone the repo:
+    ```sh
+   git clone https://github.com/AustinBao/blaze-watch
+   ```
+2. Install pip packages
+    ```sh
+   pip install -requirements
+   ```
+3. Run Flask
+    ```sh
+   flask run
+   ```
+
+---
+
 ## Process Overview
 
 ### Training the Machine Learning Model
