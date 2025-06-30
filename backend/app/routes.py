@@ -98,6 +98,7 @@ def predictSpread():
     print(X)
 
     prediction = spreadModel.predict(X)
+
     return jsonify({'predictions': prediction.tolist()})
 
 @app.route('/')
