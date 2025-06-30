@@ -4,6 +4,7 @@ var riskInfo = document.getElementById('riskInfo');
 var closeBtn = document.getElementById('closeBtn');
 var slider = document.getElementById('daySlider');
 
+// date for retrieving fire data from NASA FIRM API
 const today = new Date();
 today.setDate(today.getDate() - 1);
 const yyyy = today.getFullYear();
@@ -11,6 +12,12 @@ const mm = String(today.getMonth() + 1).padStart(2, '0');
 const dd = String(today.getDate()).padStart(2, '0');
 const currentDate = `${yyyy}-${mm}-${dd}`;
 
+let clusterMarkers = [];
+let pointMarkers = [];
+let staticClusters = [];
+let superclusterInstance;
+
+const fixedZoomLevel = 4;  
 var predictionCirclesByDay = [];
 var map;
 var isSidePanelOpen = false; 
@@ -23,7 +30,7 @@ noUiSlider.create(slider, {
     min: 1,
     max: 3
   },
-  tooltips: false, // removes the little number that appears above the slider
+  tooltips: false, 
   format: {
     to: value => Math.round(value),
     from: value => Number(value)
@@ -87,7 +94,7 @@ function drawMap() {
     center: [56.1304, -106.3468],
     zoom: 4,
     minZoom: 4,
-    maxZoom: 14,
+    maxZoom: 6,
     maxBounds: canadaBounds,
     maxBoundsViscosity: 1.0
   });
@@ -152,116 +159,175 @@ async function getRiskPoints() {
   }
 }
 
+
 async function initCircles() {
   const riskPoints = await getRiskPoints();
+  const geojsonPoints = riskPoints.map(([lat, lon, risk], i) => ({
+    type: 'Feature',
+    properties: { id: i, risk },
+    geometry: {
+      type: 'Point',
+      coordinates: [lon, lat]
+    }
+  }));
 
-  closeBtn.onclick = function() {
+  superclusterInstance = new Supercluster({
+    radius: 60,
+    maxZoom: 14
+  });
+
+  superclusterInstance.load(geojsonPoints);
+
+  const bounds = map.getBounds();
+  const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  staticClusters = superclusterInstance.getClusters(bbox, fixedZoomLevel);
+
+  drawStaticClusters();
+
+  // Close side panel 
+  closeBtn.onclick = function () {
     sidePanel.classList.remove('open');
+    slider.noUiSlider.set(1);
     setSidePanelOpen(false);
     slider.style.display = 'none';
-
-    // Remove all yellow prediction circles from the map
-    predictionCirclesByDay.forEach(dayCircles => {
-      dayCircles.forEach(circle => {
-        if (map.hasLayer(circle)) {
-          map.removeLayer(circle);
-        }
-      });
-    });
+    clearPoints();
+    drawStaticClusters();
+    map.setView([56.1304, -106.3468], fixedZoomLevel);
   };
+}
 
-  // Create a marker cluster group to improve performance with many points
-  var markers = L.markerClusterGroup({
-    showCoverageOnHover: false,
-    maxClusterRadius: 30,  // default 80. determines how close points need to be to cluster.
-    disableClusteringAtZoom: 8  // default 14. clusters will not be created at this zoom level and below.
-  });
+function drawStaticClusters() {
+  clearClusters();
 
-  markers.on('clusterclick', function (a) {
-    var cluster = a.layer; // the clicked cluster
-    var points = cluster.getAllChildMarkers();
-    
-    sidePanel.classList.add('open');
-    setSidePanelOpen(true);
-    slider.style.display = 'block';  
+  staticClusters.forEach(cluster => {
+    const [lon, lat] = cluster.geometry.coordinates;
+    const pointCount = cluster.properties.cluster ? cluster.properties.point_count : 1;
+    let fillColor;
 
-    console.log('Cluster contains', points.length, 'points');
+    if (pointCount < 10) {
+      fillColor = 'yellow';
+    } else if (pointCount < 100) {
+      fillColor = 'orange';
+    } else {
+      fillColor = 'red';
+    }
 
-    var minLatPoint = null;
-    var maxLatPoint = null;
-    var minLngPoint = null;
-    var maxLngPoint = null;
+    const marker = L.circleMarker([lat, lon], {
+      color: fillColor,
+      fillColor: fillColor,
+      fillOpacity: 0.6,
+      radius: 8 + Math.log(pointCount),
+      pane: 'riskPane'
+    }).bindTooltip(
+      `${cluster.properties.cluster ? cluster.properties.point_count : 1} fires`
+    );
 
-    points.forEach(p => {
-      const { lat, lng } = p.getLatLng();
+    marker.on('click', () => {
+      if (cluster.properties.cluster) {
+        const points = superclusterInstance.getLeaves(cluster.id, Infinity);
+        clearClusters();
+        drawPoints(points);
 
-      if (!minLatPoint || lat < minLatPoint.lat) minLatPoint = { lat, lng };
-      if (!maxLatPoint || lat > maxLatPoint.lat) maxLatPoint = { lat, lng };
-      if (!minLngPoint || lng < minLngPoint.lng) minLngPoint = { lat, lng };
-      if (!maxLngPoint || lng > maxLngPoint.lng) maxLngPoint = { lat, lng };
+        const [clusterLng, clusterLat] = cluster.geometry.coordinates;
+        map.setView([clusterLat, clusterLng+3], 8, { animate: true });
+
+        sidePanel.classList.add('open');
+        setSidePanelOpen(true);
+        slider.style.display = 'block';  
+
+        console.log('Cluster contains', points.length, 'points');
+
+        var minLatPoint = null;
+        var maxLatPoint = null;
+        var minLngPoint = null;
+        var maxLngPoint = null;
+        
+        // find largest + smallest lattitude + longitude and send to backend
+        points.forEach(p => {
+          const [lng, lat] = p.geometry.coordinates;
+
+          if (!minLatPoint || lat < minLatPoint.lat) minLatPoint = { lat, lng };
+          if (!maxLatPoint || lat > maxLatPoint.lat) maxLatPoint = { lat, lng };
+          if (!minLngPoint || lng < minLngPoint.lng) minLngPoint = { lat, lng };
+          if (!maxLngPoint || lng > maxLngPoint.lng) maxLngPoint = { lat, lng };
+        });
+
+        var payload = {
+          lat_max_lat: maxLatPoint.lat,
+          lat_max_lng: maxLatPoint.lng,
+          lat_min_lat: minLatPoint.lat,
+          lat_min_lng: minLatPoint.lng,
+          lon_max_lat: maxLngPoint.lat,
+          lon_max_lng: maxLngPoint.lng,
+          lon_min_lat: minLngPoint.lat,
+          lon_min_lng: minLngPoint.lng
+        };
+        console.log(payload)
+
+        fetch('/predict-spread', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Prediction from backend:', data.predictions);
+            if (isSidePanelOpen) {
+              drawPredictionCircles(data.predictions);
+            } else {
+              console.log('Side panel closed before predictions arrived; skipping drawing circles.');
+            }
+          });
+      }
     });
 
-    var payload = {
-      lat_max_lat: maxLatPoint.lat,
-      lat_max_lng: maxLatPoint.lng,
-      lat_min_lat: minLatPoint.lat,
-      lat_min_lng: minLatPoint.lng,
-      lon_max_lat: maxLngPoint.lat,
-      lon_max_lng: maxLngPoint.lng,
-      lon_min_lat: minLngPoint.lat,
-      lon_min_lng: minLngPoint.lng
-    };
-
-    fetch('/predict-spread', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Prediction from backend:', data.predictions);
-        if (isSidePanelOpen) {
-          drawPredictionCircles(data.predictions);
-        } else {
-          console.log('Side panel closed before predictions arrived; skipping drawing circles.');
-        }
-      });
+    marker.addTo(map);
+    clusterMarkers.push(marker);
   });
+}
 
-  riskPoints.forEach(function(point) {
-    var lat = point[0];
-    var lon = point[1];
-    var risk = point[2];
-    var color = riskToColor(risk);
+function drawPoints(points) {
+  points.forEach(p => {
+    const [lon, lat] = p.geometry.coordinates;
+    const risk = p.properties.risk;
+    console.log(p.properties)
 
-    var circle = L.circleMarker([lat, lon], {
-      color: color,
-      fillColor: color,
+    const marker = L.circleMarker([lat, lon], {
+      color: riskToColor(risk),
+      fillColor: riskToColor(risk),
       fillOpacity: 0.8,
       radius: 5,
-      pane: 'riskPane',
-      interactive: true
+      pane: 'riskPane'
     });
 
-    circle.on('click', function() {
-      riskInfo.innerHTML = `
-        <strong>Risk Level:</strong> ${Math.round(risk * 100)}%<br>
-        <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}
-      `;
+    marker.on('click', () => {
+      riskInfo.innerHTML =
+        `<strong>Risk Level:</strong> ${Math.round(risk * 100)}%<br>
+         <strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
       sidePanel.classList.add('open');
       setSidePanelOpen(true);
-      map.flyTo([lat, lon], map.getZoom(), { animate: true, duration: 1.5 });
+      map.flyTo([lat, lon+3], map.getZoom(), { animate: true, duration: 1.5 });
     });
 
-    markers.addLayer(circle);
+    marker.addTo(map);
+    pointMarkers.push(marker);
   });
-
-  map.addLayer(markers);
 }
+
+function clearClusters() {
+  clusterMarkers.forEach(marker => map.removeLayer(marker));
+  clusterMarkers = [];
+}
+
+function clearPoints() {
+  pointMarkers.forEach(marker => map.removeLayer(marker));
+  pointMarkers = [];
+}
+
 function drawPredictionCircles(predictions) {
-  // Clear previous circles and polylines
+  // Clear previous circles
   predictionCirclesByDay.forEach(dayCircles => {
     dayCircles.forEach(item => {
       if (map.hasLayer(item)) {
@@ -271,7 +337,7 @@ function drawPredictionCircles(predictions) {
   });
   predictionCirclesByDay = [];
 
-  const allDays = predictions[0]; // [ [day1 coords], [day2 coords], ..., [day5 coords] ]
+  const allDays = predictions[0]; 
 
   allDays.forEach((dayPoints, dayIndex) => {
     const dayCircles = [];
@@ -286,7 +352,7 @@ function drawPredictionCircles(predictions) {
         color: 'yellow',
         fillColor: 'yellow',
         fillOpacity: 0.8,
-        radius: 5 + dayIndex, // slightly larger each day
+        radius: 5 + dayIndex,
         pane: 'riskPane',
         interactive: false
       }).bindTooltip(`Day ${dayIndex + 1}`, {
@@ -295,15 +361,13 @@ function drawPredictionCircles(predictions) {
       });
 
       if (dayIndex === 0) {
-        circle.addTo(map);  // Only show Day 1 initially
+        circle.addTo(map);
       }
 
       dayCircles.push(circle);
     }
 
-    // Draw a yellow polygon (shaded area) connecting the day's points
     if (latlngs.length >= 3) {
-      // Convert to GeoJSON points
       const points = turf.featureCollection(
         latlngs.map(([lat, lon]) => turf.point([lon, lat]))
       );
@@ -311,7 +375,6 @@ function drawPredictionCircles(predictions) {
       const hull = turf.convex(points);
 
       if (hull) {
-        // Extract and convert to Leaflet [lat, lon]
         const hullCoords = hull.geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
 
         const polygon = L.polygon(hullCoords, {
@@ -326,7 +389,7 @@ function drawPredictionCircles(predictions) {
           polygon.addTo(map);  // Only show Day 1 initially
         }
 
-        dayCircles.push(polygon); // store the polygon
+        dayCircles.push(polygon);
       }
     }
     predictionCirclesByDay.push(dayCircles);

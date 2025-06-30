@@ -130,7 +130,7 @@ def predictSpread():
                                  latMinLat, latMinLon,
                                  lonMaxLat, lonMaxLon,
                                  lonMinLat, lonMinLon,
-                                 5)
+                                 3)
     print(predictions)
     return jsonify({'predictions': predictions})
 
