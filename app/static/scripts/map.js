@@ -141,19 +141,31 @@ function cleanData(csvText) {
 }
 
 async function getRiskPoints() {
+  console.log('Attempting to fetch fire data...');
   try {
-    const response = await fetch(
-      `https://firms.modaps.eosdis.nasa.gov/api/country/csv/7760496c7cb987792955447461887dae/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`
-    );
-
+    const apiUrl = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/7760496c7cb987792955447461887dae/VIIRS_NOAA20_NRT/-141,41.7,-52.6,83.1/1/${currentDate}/${currentDate}`;
+    console.log('API URL:', apiUrl);
+    
+    const response = await fetch(apiUrl);
+    console.log('Response status:', response.status);
+    
     const csvText = await response.text();
+    console.log('Response text:', csvText.substring(0, 100));
+    
+    if (csvText.includes('Invalid API call')) {
+      console.log('NASA API returned invalid call, using backup data');
+      throw new Error('Invalid API call from NASA');
+    }
+    
     return cleanData(csvText)
   } catch (error) {
     console.error('Error fetching or parsing data:', error);
     // LOADS BACKUP DATA in the case that sattallite api goes down
     try {
+      console.log('Loading backup data...');
       const fallbackResponse = await fetch('/static/backup_data/firms_canada_2025-06-30.csv');
       const fallbackCSV = await fallbackResponse.text();
+      console.log('Backup data loaded successfully');
       return cleanData(fallbackCSV);
     } catch (fallbackError) {
       console.error('Failed to load fallback CSV:', fallbackError);
