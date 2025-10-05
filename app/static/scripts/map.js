@@ -143,7 +143,7 @@ function cleanData(csvText) {
 async function getRiskPoints() {
   try {
     const response = await fetch(
-      `https://firms.modaps.eosdis.nasa.gov/api/country/csv/d1775654091d25f131d6db111a4a466a/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`
+      `https://firms.modaps.eosdis.nasa.gov/api/country/csv/7760496c7cb987792955447461887dae/VIIRS_NOAA20_NRT/CAN/1/${currentDate}`
     );
 
     const csvText = await response.text();
